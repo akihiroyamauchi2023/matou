@@ -1,5 +1,45 @@
 # デプロイ手順(Xserver編)
 
+## 開発から公開までの流れ(ローカルで作成 → サーバーで動かす)
+
+```
+[ローカルPC]                     [GitHub]                    [Xserver VPS]
+ 開発・動作確認  ── git push ──▶  リポジトリ  ── git pull ──▶  本番稼働
+ (npm run dev)                  (このリポジトリ)              (STEP 1〜7で構築)
+```
+
+### ローカルでの作成・動作確認
+
+お手元のPCに [Node.js LTS版](https://nodejs.org/ja)(インストーラーで「次へ」を押すだけ)と [Git](https://git-scm.com/downloads) を入れた上で:
+
+```bash
+git clone https://github.com/akihiroyamauchi2023/matou.git
+cd matou
+git checkout claude/photo-transformation-system-g7vbev   # mainへマージ前の場合
+npm install
+npm run dev
+```
+
+ブラウザで **http://localhost:3000** を開くと動作確認できます。
+APIキーなしでも「デモモード」で全フロー(生成→プレビュー→購入→ダウンロード)を確認できます。
+本物のAI生成を試す場合は `.env.example` を `.env.local` にコピーして `GEMINI_API_KEY` を設定してください。
+
+- 文言・料金・シーンなどを編集 → 保存するとブラウザに即反映されます
+- 完成したら `git add -A && git commit -m "変更内容" && git push` でGitHubへ
+
+### サーバーへの反映
+
+初回はこの下の STEP 1〜7 でVPSを構築します。**2回目以降の反映は3コマンドだけ**です:
+
+```bash
+cd /opt/matou && git pull && npm ci && npm run build && pm2 restart matou
+```
+
+> 💡 FTPでのアップロードは不要です(というより、Node.jsアプリはFTPで置くだけでは動きません)。
+> GitHubを経由することで、ローカルとサーバーの内容が常に一致し、巻き戻しも簡単になります。
+
+---
+
 ## ⚠️ まず最初に: Xserverのプラン確認
 
 本システムは **Node.js製(Next.js)のWebアプリ** です。Xserverのサービスによって対応が異なります。
