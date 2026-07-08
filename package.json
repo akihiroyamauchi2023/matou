@@ -1,0 +1,25 @@
+{
+  "name": "matou-photo-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "matou AI Photo Studio - AIがプロ品質の記念写真に仕上げるフォトサービス",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sharp": "^0.33.5",
+    "stripe": "^16.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.10",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.6.2"
+  }
+}
