@@ -1,8 +1,8 @@
 {
-  "name": "matou-photo-studio",
+  "name": "ai-photo-studio",
   "version": "1.0.0",
   "private": true,
-  "description": "matou AI Photo Studio - AIがプロ品質の記念写真に仕上げるフォトサービス",
+  "description": "AI Photo Studio - AIがプロ品質の記念写真に仕上げるフォトサービス",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

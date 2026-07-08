@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { loadJob, loadPhotoImage } from '@/lib/store';
 import { getScene } from '@/lib/scenes';
+import { BRAND } from '@/lib/branding';
 
 export const runtime = 'nodejs';
 
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest, { params }: { params: { jobId: strin
   return new NextResponse(new Uint8Array(image), {
     headers: {
       'Content-Type': 'image/jpeg',
-      'Content-Disposition': `attachment; filename="matou-${sceneName}-${params.photoId.slice(0, 8)}.jpg"`,
+      'Content-Disposition': `attachment; filename="${BRAND.filePrefix}-${sceneName}-${params.photoId.slice(0, 8)}.jpg"`,
       'Cache-Control': 'private, no-store',
     },
   });

@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BRAND } from '@/lib/branding';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'matou AI Photo Studio | AIが仕上げるプロ品質の記念写真',
+  title: `${BRAND.name} | AIが仕上げるプロ品質の記念写真`,
   description:
     'プロフィール写真・七五三・結婚式前撮り・遺影写真など、シーンを選んで写真をアップロードするだけ。AIが超一流のプロ写真家品質の記念写真に仕上げます。プレビュー無料、ダウンロード時のみ課金。',
 };
@@ -23,8 +24,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="site-header">
           <div className="inner">
             <Link href="/" className="brand">
-              matou
-              <small>AI PHOTO STUDIO</small>
+              {BRAND.name}
+              <small>{BRAND.nameEn}</small>
             </Link>
             <nav className="header-nav">
               <Link href="/#scenes">シーン一覧</Link>
@@ -35,9 +36,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         {children}
         <footer className="site-footer">
-          <div className="brand">matou</div>
-          <p>AI PHOTO STUDIO — あなたの一枚を、一生の一枚に。</p>
-          <p style={{ marginTop: '0.8rem', opacity: 0.6 }}>&copy; 2026 matou | THE NEXT GENERATION OF PHOTOGRAPHY</p>
+          <div className="brand">{BRAND.name}</div>
+          <p>
+            {BRAND.nameEn} — {BRAND.tagline}
+          </p>
+          <p style={{ marginTop: '0.8rem', opacity: 0.6 }}>&copy; 2026 {BRAND.nameEn}</p>
         </footer>
       </body>
     </html>

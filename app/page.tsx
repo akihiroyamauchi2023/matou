@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import { SCENES } from '@/lib/scenes';
 import { PRICE_TIERS, formatJPY } from '@/lib/pricing';
+import { BRAND } from '@/lib/branding';
 
 export default function HomePage() {
   return (
     <main>
       <div className="hero">
-        <h1>matou</h1>
-        <p className="tagline">AI PHOTO STUDIO — あなたの一枚を、一生の一枚に。</p>
+        <h1>{BRAND.name}</h1>
+        <p className="tagline">
+          {BRAND.nameEn} — {BRAND.tagline}
+        </p>
         <p className="sub">
           プロフィール写真から七五三、結婚式前撮り、遺影写真まで。
           シーンを選んで手元の写真をアップロードするだけで、AIが超一流のプロ写真家が撮影したような記念写真に仕上げます。

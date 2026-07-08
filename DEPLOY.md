@@ -13,9 +13,9 @@
 お手元のPCに [Node.js LTS版](https://nodejs.org/ja)(インストーラーで「次へ」を押すだけ)と [Git](https://git-scm.com/downloads) を入れた上で:
 
 ```bash
-git clone https://github.com/akihiroyamauchi2023/matou.git
-cd matou
-git checkout claude/photo-transformation-system-g7vbev   # mainへマージ前の場合
+git clone https://github.com/akihiroyamauchi2023/ai-photo-studio.git
+cd ai-photo-studio
+
 npm install
 npm run dev
 ```
@@ -32,7 +32,7 @@ APIキーなしでも「デモモード」で全フロー(生成→プレビュ�
 初回はこの下の STEP 1〜7 でVPSを構築します。**2回目以降の反映は3コマンドだけ**です:
 
 ```bash
-cd /opt/matou && git pull && npm ci && npm run build && pm2 restart matou
+cd /opt/ai-photo-studio && git pull && npm ci && npm run build && pm2 restart photo-studio
 ```
 
 > 💡 FTPでのアップロードは不要です(というより、Node.jsアプリはFTPで置くだけでは動きません)。
@@ -62,7 +62,7 @@ cd /opt/matou && git pull && npm ci && npm run build && pm2 restart matou
 [ユーザー] → https://ドメイン → [Nginx (リバースプロキシ+SSL)] → [Next.js (Node.js, port 3000)]
                                                                       ├── Gemini API (AI生成)
                                                                       ├── Stripe (決済)
-                                                                      └── /var/matou-data (生成写真の保存)
+                                                                      └── /var/photo-data (生成写真の保存)
 ```
 
 ## STEP 1: VPSの初期設定
@@ -100,9 +100,8 @@ node -v   # v22.x と表示されればOK
 ```bash
 # アプリ用ユーザーで運用する場合は適宜読み替えてください
 cd /opt
-git clone https://github.com/akihiroyamauchi2023/matou.git
-cd matou
-# ※ mainブランチへマージ前の場合は: git checkout claude/photo-transformation-system-g7vbev
+git clone https://github.com/akihiroyamauchi2023/ai-photo-studio.git
+cd ai-photo-studio
 
 npm ci
 
@@ -118,12 +117,12 @@ GEMINI_API_KEY=<Google AI Studioで取得したキー>
 STRIPE_SECRET_KEY=<Stripeダッシュボードのシークレットキー sk_live_...>
 STRIPE_WEBHOOK_SECRET=<STEP 6 で取得 whsec_...>
 NEXT_PUBLIC_SITE_URL=https://<あなたのドメイン>
-DATA_DIR=/var/matou-data
+DATA_DIR=/var/photo-data
 ```
 
 ```bash
 # 写真データ保存先の作成
-mkdir -p /var/matou-data
+mkdir -p /var/photo-data
 
 # ビルド
 npm run build
@@ -132,8 +131,8 @@ npm run build
 ## STEP 4: PM2でアプリを常駐させる
 
 ```bash
-cd /opt/matou
-pm2 start npm --name matou -- start
+cd /opt/ai-photo-studio
+pm2 start npm --name photo-studio -- start
 pm2 save
 pm2 startup   # 表示されたコマンドをそのまま実行(サーバー再起動時に自動起動)
 ```
@@ -153,7 +152,7 @@ photo.example.com  →  <VPSのIPアドレス>
 ### 5-2. Nginxリバースプロキシ
 
 ```bash
-cat > /etc/nginx/sites-available/matou <<'EOF'
+cat > /etc/nginx/sites-available/photo-studio <<'EOF'
 server {
     listen 80;
     server_name photo.example.com;   # ← ご自身のドメインに変更
@@ -172,7 +171,7 @@ server {
 }
 EOF
 
-ln -s /etc/nginx/sites-available/matou /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/photo-studio /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 ```
 
@@ -191,13 +190,13 @@ certbot --nginx -d photo.example.com   # ← ご自身のドメインに変更
 2. エンドポイントURL: `https://photo.example.com/api/webhook/stripe`
 3. イベント: `checkout.session.completed` を選択
 4. 発行された **署名シークレット (whsec_...)** を `.env.local` の `STRIPE_WEBHOOK_SECRET` に設定
-5. 反映: `cd /opt/matou && npm run build && pm2 restart matou`
+5. 反映: `cd /opt/ai-photo-studio && npm run build && pm2 restart photo-studio`
 
 ## STEP 7: 動作確認チェックリスト
 
 - [ ] `https://ドメイン` でトップページが表示される
 - [ ] シーン選択 → 写真アップロード → 生成が完了する(デモモード表示が**出ていない**こと = Geminiキー有効)
-- [ ] プレビューに「matou」の透かしが入っている
+- [ ] プレビューにブランド名(既定: HARENOHI)の透かしが入っている
 - [ ] 購入ボタンでStripeの決済画面に遷移する(テストはStripeのテストキー + カード番号 `4242 4242 4242 4242`)
 - [ ] 決済後、透かしなしの高解像度写真がダウンロードできる
 
@@ -206,21 +205,21 @@ certbot --nginx -d photo.example.com   # ← ご自身のドメインに変更
 ## 更新(アップデート)手順
 
 ```bash
-cd /opt/matou
+cd /opt/ai-photo-studio
 git pull
 npm ci
 npm run build
-pm2 restart matou
+pm2 restart photo-studio
 ```
 
 ## 運用メモ
 
-- **ログ確認**: `pm2 logs matou`
-- **写真データ**: `/var/matou-data` に保存されます。ディスク使用量に注意し、必要に応じて古いジョブを削除してください(例: 30日より古いものを削除する場合)
+- **ログ確認**: `pm2 logs photo-studio`
+- **写真データ**: `/var/photo-data` に保存されます。ディスク使用量に注意し、必要に応じて古いジョブを削除してください(例: 30日より古いものを削除する場合)
   ```bash
   # cronに登録する例(毎日3時に30日以上前のジョブを削除)
   # crontab -e で以下を追加
-  0 3 * * * find /var/matou-data/jobs -maxdepth 1 -mtime +30 -type d -exec rm -rf {} +
+  0 3 * * * find /var/photo-data/jobs -maxdepth 1 -mtime +30 -type d -exec rm -rf {} +
   ```
-- **バックアップ**: XserverVPSパネルの自動バックアップ(有料オプション)または `/var/matou-data` の定期コピーを推奨
+- **バックアップ**: XserverVPSパネルの自動バックアップ(有料オプション)または `/var/photo-data` の定期コピーを推奨
 - **本番切替**: Stripeを本番キー(`sk_live_`)に切り替える際は、Webhookも本番モードで再登録が必要です

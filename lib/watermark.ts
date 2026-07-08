@@ -1,6 +1,7 @@
 // プレビュー用の透かし処理。
-// 無料プレビューは縮小 + 「matou」透かしタイル、購入後はオリジナルを提供する。
+// 無料プレビューは縮小 + ブランド名の透かしタイル、購入後はオリジナルを提供する。
 import sharp from 'sharp';
+import { BRAND } from './branding';
 
 const PREVIEW_MAX = 800;
 
@@ -20,7 +21,7 @@ export async function makeWatermarkedPreview(original: Buffer): Promise<Buffer> 
   for (let y = -h; y < h * 2; y += step) {
     for (let x = -w; x < w * 2; x += step * 1.6) {
       tiles.push(
-        `<text x="${x}" y="${y}" font-family="Georgia, serif" font-size="34" fill="rgba(255,255,255,0.30)" transform="rotate(-30 ${x} ${y})">matou</text>`
+        `<text x="${x}" y="${y}" font-family="Georgia, serif" font-size="34" fill="rgba(255,255,255,0.30)" transform="rotate(-30 ${x} ${y})">${BRAND.watermark}</text>`
       );
     }
   }

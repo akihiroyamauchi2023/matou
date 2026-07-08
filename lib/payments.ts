@@ -2,6 +2,7 @@
 import Stripe from 'stripe';
 import { priceForCount, CURRENCY } from './pricing';
 import { getScene } from './scenes';
+import { BRAND } from './branding';
 import type { Job } from './store';
 
 export function isDemoPayment(): boolean {
@@ -47,7 +48,7 @@ export async function createCheckout(job: Job, photoIds: string[]): Promise<{ ur
           currency: CURRENCY,
           unit_amount: amount,
           product_data: {
-            name: `matou AI Photo Studio - ${sceneName} 高解像度ダウンロード (${photoIds.length}枚)`,
+            name: `${BRAND.name} - ${sceneName} 高解像度ダウンロード (${photoIds.length}枚)`,
             description: '透かしなし高解像度写真のダウンロード権',
           },
         },
