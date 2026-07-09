@@ -8,6 +8,7 @@ export type PhotoStatus = 'pending' | 'generating' | 'done' | 'error';
 
 export type Photo = {
   id: string;
+  variationId: string;
   variationLabel: string;
   status: PhotoStatus;
   error?: string;

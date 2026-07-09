@@ -16,15 +16,27 @@ export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
     const sceneId = String(form.get('sceneId') ?? '');
-    const count = Number(form.get('count') ?? 0);
     const file = form.get('photo');
 
     const scene = getScene(sceneId);
     if (!scene) {
       return NextResponse.json({ error: 'シーンが不正です' }, { status: 400 });
     }
-    if (!Number.isInteger(count) || count < 1 || count > scene.maxCount) {
-      return NextResponse.json({ error: `枚数は1〜${scene.maxCount}枚で指定してください` }, { status: 400 });
+
+    // 選択されたシチュエーション(バリエーションID)を受け取る
+    let variationIds: string[] = [];
+    try {
+      const raw = form.get('variationIds');
+      variationIds = raw ? (JSON.parse(String(raw)) as string[]) : [];
+    } catch {
+      variationIds = [];
+    }
+    variationIds = variationIds.filter((id) => scene.variations.some((v) => v.id === id));
+    if (variationIds.length < 1 || variationIds.length > scene.maxCount) {
+      return NextResponse.json(
+        { error: `シチュエーションを1〜${scene.maxCount}個選んでください` },
+        { status: 400 }
+      );
     }
     if (!(file instanceof File)) {
       return NextResponse.json({ error: '写真をアップロードしてください' }, { status: 400 });
@@ -38,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     const buf = Buffer.from(await file.arrayBuffer());
-    const job = await startGenerationJob(sceneId, count, buf, ext);
+    const job = await startGenerationJob(sceneId, variationIds, buf, ext);
 
     return NextResponse.json({ jobId: job.id });
   } catch (err) {

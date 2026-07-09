@@ -15,7 +15,7 @@ export default function StudioClient() {
   const [sceneId, setSceneId] = useState<string | null>(initialScene && getScene(initialScene) ? initialScene : null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [count, setCount] = useState(4);
+  const [selectedVariations, setSelectedVariations] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [dragover, setDragover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,6 +27,24 @@ export default function StudioClient() {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  // シーンが変わったら、そのシーンのシチュエーションを既定で数個選んでおく
+  useEffect(() => {
+    if (scene) {
+      const defaults = scene.variations.slice(0, Math.min(3, scene.variations.length)).map((v) => v.id);
+      setSelectedVariations(new Set(defaults));
+    }
+  }, [sceneId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function toggleVariation(id: string) {
+    setSelectedVariations((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (scene && next.size >= scene.maxCount) return prev; // 上限
+      else next.add(id);
+      return next;
+    });
+  }
 
   function acceptFile(f: File | undefined | null) {
     setError(null);
@@ -51,7 +69,7 @@ export default function StudioClient() {
     try {
       const form = new FormData();
       form.append('sceneId', scene.id);
-      form.append('count', String(count));
+      form.append('variationIds', JSON.stringify(Array.from(selectedVariations)));
       form.append('photo', file);
       const res = await fetch('/api/generate', { method: 'POST', body: form });
       const json = await res.json();
@@ -66,7 +84,7 @@ export default function StudioClient() {
   const steps: { key: Step; label: string }[] = [
     { key: 'scene', label: 'シーン選択' },
     { key: 'photo', label: '写真アップロード' },
-    { key: 'count', label: '枚数指定' },
+    { key: 'count', label: '枚数・シチュエーション' },
     { key: 'generating', label: '生成' },
   ];
   const stepIndex = steps.findIndex((s) => s.key === step);
@@ -182,35 +200,65 @@ export default function StudioClient() {
       {step === 'count' && scene && (
         <>
           <div className="section-header">
-            <h2>生成する枚数</h2>
+            <h2>シチュエーションを選ぶ</h2>
             <p>
-              {scene.name}は最大{scene.maxCount}枚まで。背景やライティングの異なるカットを生成します。
+              ほしい仕上がりを選んでください。<strong>選んだ数がそのまま生成枚数</strong>になります(最大{scene.maxCount}枚)。
             </p>
           </div>
-          <div className="count-selector">
-            {Array.from({ length: scene.maxCount }, (_, i) => i + 1).map((n) => (
-              <button key={n} type="button" className={count === n ? 'selected' : ''} onClick={() => setCount(n)}>
-                {n}
+
+          <div className="var-toolbar">
+            <span className="var-count">
+              選択中 <strong>{selectedVariations.size}</strong> / {scene.maxCount} 枚
+            </span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="var-linkbtn"
+                onClick={() => setSelectedVariations(new Set(scene.variations.map((v) => v.id)))}
+              >
+                すべて選択
               </button>
-            ))}
-          </div>
-          <p className="hint">生成とプレビューは無料です。お支払いはダウンロードする写真を選んでから。</p>
-
-          <div style={{ maxWidth: 560, margin: '2rem auto 0' }}>
-            <p style={{ fontSize: '0.88rem', color: 'var(--muted)', marginBottom: '0.5rem' }}>生成されるカットの例:</p>
-            <ul style={{ fontSize: '0.85rem', color: 'var(--muted)', paddingLeft: '1.4rem' }}>
-              {scene.variations.slice(0, count).map((v) => (
-                <li key={v.id}>{v.label}</li>
-              ))}
-            </ul>
+              <button type="button" className="var-linkbtn" onClick={() => setSelectedVariations(new Set())}>
+                選択解除
+              </button>
+            </div>
           </div>
 
-          <div className="center" style={{ marginTop: '2.5rem', display: 'flex', gap: '0.8rem', justifyContent: 'center' }}>
+          <div className="variation-grid">
+            {scene.variations.map((v) => {
+              const sel = selectedVariations.has(v.id);
+              const full = !sel && selectedVariations.size >= scene.maxCount;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={`variation-chip${sel ? ' selected' : ''}`}
+                  onClick={() => toggleVariation(v.id)}
+                  disabled={full}
+                  title={full ? `最大${scene.maxCount}枚までです` : undefined}
+                >
+                  <span className="vc-check">{sel ? '✓' : ''}</span>
+                  <span className="vc-label">{v.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="hint" style={{ marginTop: '1.4rem' }}>
+            生成とプレビューは無料です。お支払いはダウンロードする写真を選んでから。
+          </p>
+
+          <div className="center" style={{ marginTop: '2rem', display: 'flex', gap: '0.8rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-outline" onClick={() => setStep('photo')}>
               ← もどる
             </button>
-            <button type="button" className="btn btn-primary btn-lg" onClick={startGeneration}>
-              {count}枚を無料で生成する
+            <button
+              type="button"
+              className="btn btn-primary btn-lg"
+              onClick={startGeneration}
+              disabled={selectedVariations.size === 0}
+            >
+              {selectedVariations.size > 0 ? `${selectedVariations.size}枚を無料で生成する` : 'シチュエーションを選んでください'}
             </button>
           </div>
         </>

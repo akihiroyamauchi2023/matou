@@ -234,3 +234,17 @@ export function buildPrompt(scene: Scene, variationIndex: number): { prompt: str
     variationLabel: v.label,
   };
 }
+
+// 指定したシチュエーション(バリエーションID)からプロンプトを組み立てる。
+// ユーザーが選んだシチュエーションごとに1枚生成するために使う。
+export function buildPromptForVariation(
+  scene: Scene,
+  variationId: string
+): { prompt: string; variationLabel: string } | null {
+  const v = scene.variations.find((x) => x.id === variationId);
+  if (!v) return null;
+  return {
+    prompt: `${scene.basePrompt}\n\nScene direction: ${v.prompt}`,
+    variationLabel: v.label,
+  };
+}

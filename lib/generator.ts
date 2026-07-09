@@ -2,7 +2,7 @@
 // APIリクエストはジョブ作成後すぐ返し、本処理はバックグラウンドで並列実行する。
 // クライアントは /api/job/[jobId] をポーリングして進捗を取得する。
 import crypto from 'crypto';
-import { buildPrompt, getScene } from './scenes';
+import { buildPromptForVariation, getScene } from './scenes';
 import { generatePhoto, isDemoGeneration } from './gemini';
 import { createJob, loadSourceImage, saveJob, savePhotoImage, saveSourceImage, type Job } from './store';
 
@@ -10,19 +10,33 @@ import { createJob, loadSourceImage, saveJob, savePhotoImage, saveSourceImage, t
 // レート制限を避ける。課金を有効化して高速化したい場合は GEN_CONCURRENCY で増やせる。
 const CONCURRENCY = Math.max(1, Number(process.env.GEN_CONCURRENCY) || 1);
 
-export async function startGenerationJob(sceneId: string, count: number, sourceImage: Buffer, ext: string): Promise<Job> {
+// ユーザーが選んだシチュエーション(バリエーションID)ごとに1枚生成する。
+export async function startGenerationJob(
+  sceneId: string,
+  variationIds: string[],
+  sourceImage: Buffer,
+  ext: string
+): Promise<Job> {
   const scene = getScene(sceneId);
   if (!scene) throw new Error('unknown scene');
-  const n = Math.max(1, Math.min(count, scene.maxCount));
 
-  const job = await createJob(sceneId, n, isDemoGeneration());
+  // 実在するバリエーションIDのみ・重複除去・上限内に整える
+  const valid = variationIds.filter((id, i) => scene.variations.some((v) => v.id === id) && variationIds.indexOf(id) === i);
+  const chosen = valid.slice(0, scene.maxCount);
+  if (chosen.length === 0) throw new Error('no valid situations selected');
+
+  const job = await createJob(sceneId, chosen.length, isDemoGeneration());
   await saveSourceImage(job.id, sourceImage, ext);
 
-  job.photos = Array.from({ length: n }, (_, i) => ({
-    id: crypto.randomUUID(),
-    variationLabel: scene.variations[i % scene.variations.length].label,
-    status: 'pending' as const,
-  }));
+  job.photos = chosen.map((variationId) => {
+    const v = scene.variations.find((x) => x.id === variationId)!;
+    return {
+      id: crypto.randomUUID(),
+      variationId,
+      variationLabel: v.label,
+      status: 'pending' as const,
+    };
+  });
   await saveJob(job);
 
   // fire-and-forget: リクエストを塞がずにバックグラウンドで生成
@@ -48,8 +62,9 @@ async function runJob(job: Job): Promise<void> {
       photo.status = 'generating';
       await saveJob(job);
       try {
-        const { prompt } = buildPrompt(scene, index);
-        const image = await generatePhoto(source, prompt);
+        const built = buildPromptForVariation(scene, photo.variationId);
+        if (!built) throw new Error(`unknown situation: ${photo.variationId}`);
+        const image = await generatePhoto(source, built.prompt);
         await savePhotoImage(job.id, photo.id, image);
         photo.status = 'done';
       } catch (err) {
