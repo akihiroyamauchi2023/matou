@@ -35,21 +35,34 @@ export async function generatePhoto(sourceImage: Buffer, prompt: string): Promis
     },
   };
 
-  const res = await fetch(`${API_BASE}/models/${MODEL}:generateContent`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey,
-    },
-    body: JSON.stringify(body),
-  });
+  // 429(レート/クォータ)・503(一時的過負荷)は指数バックオフで数回リトライする。
+  // 無料枠のRPM(1分あたり回数)制限に当たっても、待って再試行すれば通ることが多い。
+  let res: Response | null = null;
+  let lastErrText = '';
+  const MAX_ATTEMPTS = 4;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    res = await fetch(`${API_BASE}/models/${MODEL}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) break;
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Gemini API error ${res.status}: ${text.slice(0, 300)}`);
+    lastErrText = await res.text().catch(() => '');
+    const retryable = res.status === 429 || res.status === 503;
+    if (!retryable || attempt === MAX_ATTEMPTS - 1) {
+      throw new Error(`Gemini API error ${res.status}: ${lastErrText.slice(0, 300)}`);
+    }
+    // 20s, 40s, 60s … と待つ(無料枠のRPM回復を待つため長めに)
+    const waitMs = Math.min(20000 * (attempt + 1), 60000);
+    console.warn(`[gemini] ${res.status} rate-limited, retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/${MAX_ATTEMPTS})`);
+    await new Promise((r) => setTimeout(r, waitMs));
   }
 
-  const json = (await res.json()) as {
+  const json = (await res!.json()) as {
     candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string }; inline_data?: { data?: string } }> } }>;
   };
 

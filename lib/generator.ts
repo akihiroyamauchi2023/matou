@@ -6,7 +6,9 @@ import { buildPrompt, getScene } from './scenes';
 import { generatePhoto, isDemoGeneration } from './gemini';
 import { createJob, loadSourceImage, saveJob, savePhotoImage, saveSourceImage, type Job } from './store';
 
-const CONCURRENCY = 3;
+// 同時実行数。無料枠は1分あたりの回数制限が厳しいため、既定は1(逐次)にして
+// レート制限を避ける。課金を有効化して高速化したい場合は GEN_CONCURRENCY で増やせる。
+const CONCURRENCY = Math.max(1, Number(process.env.GEN_CONCURRENCY) || 1);
 
 export async function startGenerationJob(sceneId: string, count: number, sourceImage: Buffer, ext: string): Promise<Job> {
   const scene = getScene(sceneId);
